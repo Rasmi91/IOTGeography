@@ -18,34 +18,41 @@ namespace evalfunc
         public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)]HttpRequestMessage req, TraceWriter log)
         {
             log.Info("C# HTTP trigger function processed a request.");
-                      
-            string name = req.GetQueryNameValuePairs()
-                .FirstOrDefault(q => string.Compare(q.Key, "name", true) == 0)
-                .Value;
+                                
             string machineId = string.Empty;
             List<GeographyPoints> pointList = new List<GeographyPoints>();
-             GeographyPoints pointItem = new GeographyPoints();
-
-            if (name == null)
-            {              
-                dynamic data = await req.Content.ReadAsAsync<object>();
-                name = data?.name;
-                machineId = data?.machineid;
-               var geography = data?.geofenceRequests;
-              var pointList1 = JsonConvert.DeserializeObject<List<GeographyPoints>>(geography.ToString());
-                foreach (var item in pointList1)
+            GeographyPoints pointItem = new GeographyPoints();
+                          
+            dynamic data = await req.Content.ReadAsAsync<object>();                         
+            var geography = data?.geofenceRequest;
+            //Json Syntax1
+            machineId = data?.machineid;
+            var pointList1 = JsonConvert.DeserializeObject<List<GeographyPoints>>(geography.ToString());
+            foreach (var item in pointList1)
+            {
+                foreach (var pt in item)
                 {
-                    foreach (var pt in item)
-                    {
-                        pointItem.Latitude = pt;
-                        pointItem.Longitude = pt;
-                        pointItem.Timestamp = pt;
-                        pointList.Add(pt);
-                    }
+                    pointItem.latitude = pt;
+                    pointItem.longitude = pt;
+                    pointItem.timestamp = pt;
+                    pointList.Add(pt);
                 }
-            }           
+            }
+            //Json Syntax2
+            //var pointList2 = JsonConvert.DeserializeObject<List<GeographyCoordinates>>(geography.ToString());
+            //    foreach (var item in pointList2)
+            //    {
+            //        foreach (var pt in item)
+            //        {
+            //            pointItem.latitude = pt;
+            //            pointItem.longitude = pt;
+            //            pointItem.timestamp = pt;
+            //            pointList.Add(pt);
+            //        }
+            //    }
 
-            if (name == "rasmi")
+            string toCheck = "rasmi";
+            if (toCheck == "rasmi")
             {
                 string anotherFunctionSecret = "NFDGHECTq7qUzPQRdSpWdMTRRZfaHvf0OkACVfK5WQQs3udmVja6cw==";
                 Uri anotherFunctionUri = new Uri(req.RequestUri.AbsoluteUri.Replace(
@@ -55,9 +62,9 @@ namespace evalfunc
                 var output = await client.GetAsync(anotherFunctionUri);
                 return output;
             }
-            return name == null
+            return toCheck == null
                 ? req.CreateResponse(HttpStatusCode.BadRequest, "Please pass a name on the query string or in the request body")
-                : req.CreateResponse(HttpStatusCode.OK, "Hello " + name + machineId);
+                : req.CreateResponse(HttpStatusCode.OK, "Hello " + toCheck + machineId);
         }
     }
    
@@ -65,7 +72,14 @@ namespace evalfunc
 
 public class GeographyPoints
 {
-    public string Latitude { get; set; }
-    public string Longitude { get; set; }
-    public string Timestamp { get; set; }
+    public string latitude { get; set; }
+    public string longitude { get; set; }
+    public string timestamp { get; set; }
+}
+
+public class GeographyCoordinates
+{
+    public  List<GeographyPoints> coordinates { get; set; }
+    public string machineId { get; set; }
+
 }
