@@ -1,4 +1,4 @@
-using Microsoft.Azure.WebJobs;
+ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Newtonsoft.Json;
@@ -32,8 +32,8 @@ namespace evalfunc
                 name = data?.name;
                 machineId = data?.machineid;
                var geography = data?.geofenceRequests;
-                pointList = JsonConvert.DeserializeObject<GeographyPoints>(geography);
-                foreach (var item in geography)
+              var pointList1 = JsonConvert.DeserializeObject<List<GeographyPoints>>(geography.ToString());
+                foreach (var item in pointList1)
                 {
                     foreach (var pt in item)
                     {
