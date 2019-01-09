@@ -8,63 +8,60 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace evalfunc
 {
     public static class evalfunc
     {
-        [FunctionName("eval-func")]
+        [FunctionName("evaluateBatch")]
         public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)]HttpRequestMessage req, TraceWriter log)
         {
             log.Info("C# HTTP trigger function processed a request.");
-                                
-            string machineId = string.Empty;
-            List<GeographyPoints> pointList = new List<GeographyPoints>();
-            GeographyPoints pointItem = new GeographyPoints();
-                          
-            dynamic data = await req.Content.ReadAsAsync<object>();                         
+            string response=string.Empty; 
+            
+            //1.1 Receiving a Request                                      
+            dynamic data = await req.Content.ReadAsAsync<object>();          
+            var tenantId = data?.tenantId;
+            var metadata= data?.metadata;
             var geography = data?.geofenceRequest;
-            //Json Syntax1
-            machineId = data?.machineid;
-            var pointList1 = JsonConvert.DeserializeObject<List<GeographyPoints>>(geography.ToString());
-            foreach (var item in pointList1)
-            {
-                foreach (var pt in item)
-                {
-                    pointItem.latitude = pt;
-                    pointItem.longitude = pt;
-                    pointItem.timestamp = pt;
-                    pointList.Add(pt);
-                }
-            }
-            //Json Syntax2
-            //var pointList2 = JsonConvert.DeserializeObject<List<GeographyCoordinates>>(geography.ToString());
-            //    foreach (var item in pointList2)
-            //    {
-            //        foreach (var pt in item)
-            //        {
-            //            pointItem.latitude = pt;
-            //            pointItem.longitude = pt;
-            //            pointItem.timestamp = pt;
-            //            pointList.Add(pt);
-            //        }
-            //    }
 
-            string toCheck = "rasmi";
-            if (toCheck == "rasmi")
+            //1.2 Validate Batch Reuqest   
+            if(data!=null)
             {
                 string anotherFunctionSecret = "NFDGHECTq7qUzPQRdSpWdMTRRZfaHvf0OkACVfK5WQQs3udmVja6cw==";
                 Uri anotherFunctionUri = new Uri(req.RequestUri.AbsoluteUri.Replace(
                     req.RequestUri.PathAndQuery,
-                    $"/api/geography-eval?code={anotherFunctionSecret}&lat=10&long=20"));
+                    $"/api/validateBatchRequest?code={anotherFunctionSecret}"));
+                var content = new StringContent(data.ToString(), Encoding.UTF8, "application/json");
                 HttpClient client = new HttpClient();
-                var output = await client.GetAsync(anotherFunctionUri);
-                return output;
+                var validation = await client.PostAsync(anotherFunctionUri, content);
+                response = validation.ToString();
+                if (response == "success")
+                {
+                    //1.3 Send Request to Queue
+                    string anotherFunctionSecret1 = "NFDGHECTq7qUzPQRdSpWdMTRRZfaHvf0OkACVfK5WQQs3udmVja6cw==";
+                    Uri anotherFunctionUri1 = new Uri(req.RequestUri.AbsoluteUri.Replace(
+                        req.RequestUri.PathAndQuery,
+                        $"/api/validateBatchRequest?code={anotherFunctionSecret1}"));
+                    var content1 = new StringContent(data.ToString(), Encoding.UTF8, "application/json");
+                    HttpClient client1 = new HttpClient();
+                    var validation1 = await client.PostAsync(anotherFunctionUri, content);
+                }
+               
             }
-            return toCheck == null
-                ? req.CreateResponse(HttpStatusCode.BadRequest, "Please pass a name on the query string or in the request body")
-                : req.CreateResponse(HttpStatusCode.OK, "Hello " + toCheck + machineId);
+            else
+            {
+                response = "Please send a json input";
+            }
+            
+                     
+            //1.4 Send Synchronous Response
+            return response != null
+              ? req.CreateResponse(HttpStatusCode.BadRequest, response)
+              : req.CreateResponse(HttpStatusCode.OK, "Your request has been processed");
+
         }
     }
    
